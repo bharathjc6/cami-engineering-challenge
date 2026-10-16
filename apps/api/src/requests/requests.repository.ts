@@ -1,9 +1,26 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CustomerRequest, RequestStatus } from '../customer-request.entity';
-import { ListOptions, RequestListItem } from '../requests.types';
-import { NewRequest, RequestsRepository } from './requests.repository';
+import { CustomerRequest, RequestStatus } from './customer-request.entity';
+
+export type RequestListItem = {
+  id: string;
+  message: string;
+  status: RequestStatus;
+  category: string | null;
+  confidence: number | null;
+  noteCount: number;
+  latestNotePreview: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ListOptions = {
+  limit?: number;
+  offset?: number;
+};
+
+export type NewRequest = Pick<CustomerRequest, 'message' | 'status' | 'category' | 'confidence'>;
 
 /** Raw row shape returned by the list query (snake_case, as Postgres returns it). */
 export type RequestListRow = {
@@ -32,8 +49,9 @@ export function toRequestListItem(row: RequestListRow): RequestListItem {
   };
 }
 
+/** All data access for customer requests; RequestsService holds only business rules. */
 @Injectable()
-export class TypeOrmRequestsRepository implements RequestsRepository {
+export class RequestsRepository {
   constructor(
     @InjectRepository(CustomerRequest)
     private readonly requests: Repository<CustomerRequest>,

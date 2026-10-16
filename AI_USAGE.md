@@ -25,17 +25,12 @@
   npm 10 (CI's version) showed it installs fine. The real failure was the Migrate step
   pointing at a non-existent `cami_app` database. I rejected regenerating the lockfile
   because it was unnecessary churn.
-- **An invalid benchmark.** The first "after" timing still showed ~1.3s. The cause was a
-  stale API process from the baseline run still holding port 3001, so the "new" numbers
-  came from the old code. The process kill had filtered on a command-line pattern that
-  didn't match. I killed the stale process, re-measured (~30ms), and re-ran the
-  output diff.
-- **Accidental dependency drift.** An early `npm install` (to get the app running) rewrote
-  `package-lock.json` and bumped versions (e.g. `next` 16.2 → 16.4). I reverted it to the
-  committed lockfile so the PR contains only intentional dependency changes.
 - **Scope control**: I chose opt-in API paging instead of changing the default list
-  contract. While reviewing, I asked for the raw list SQL to move out of the service, and
-  the agent added a repository layer for that. I also started UI pagination, then had it
+  contract. While reviewing, I asked for the raw list SQL to move out of the service. The
+  agent's first version over-built it (interfaces, tokens and adapters for both requests
+  and history, plus one file per DTO), which brought the PR to 37 files. I had it trimmed
+  to one concrete repository class, a single DTO file and a single migration, keeping only
+  the separation that was needed. I also started UI pagination, then had it
   reverted mid-change once I checked it against the brief: it wasn't asked for, and the
   original UI deliberately shows the newest 25. I removed the confidence score the agent
   had added to the History page for the same reason.

@@ -2,7 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { RequestsService } from '../src/requests/requests.service';
 import { CustomerRequest } from '../src/requests/customer-request.entity';
-import { RequestsRepository } from '../src/requests/persistence/requests.repository';
+import { RequestsRepository } from '../src/requests/requests.repository';
 
 function makeRequest(overrides: Partial<CustomerRequest> = {}): CustomerRequest {
   return Object.assign(new CustomerRequest(), {
@@ -19,13 +19,13 @@ function makeRequest(overrides: Partial<CustomerRequest> = {}): CustomerRequest 
 }
 
 function setup(existing: CustomerRequest | null = makeRequest()) {
-  const repo: RequestsRepository = {
+  const repo = {
     listWithNoteSummary: vi.fn().mockResolvedValue([]),
     findById: vi.fn().mockResolvedValue(existing),
-    create: vi.fn(async (data) => makeRequest(data)),
-    save: vi.fn(async (request) => request),
+    create: vi.fn(async (data: Partial<CustomerRequest>) => makeRequest(data)),
+    save: vi.fn(async (request: CustomerRequest) => request),
   };
-  return { service: new RequestsService(repo), repo };
+  return { service: new RequestsService(repo as unknown as RequestsRepository), repo };
 }
 
 describe('RequestsService', () => {

@@ -98,20 +98,24 @@ Deliberate choices and gaps:
 
 ### Persistence boundary
 
-Services no longer touch TypeORM. Data access sits behind two interfaces (ports), injected
-by token:
+I separated persistence only where it earns its place. `requests.repository.ts` is one
+concrete `RequestsRepository` class (`listWithNoteSummary`, `findById`, `create`, `save`).
+It holds the raw aggregate list SQL and its row mapper, which previously sat inside
+`RequestsService`. The service now has only business rules and no TypeORM import, and its
+unit tests pass a plain fake object.
 
-- `RequestsRepository`: `listWithNoteSummary`, `findById`, `create`, `save`
-- `ClassificationHistoryRepository`: `record`, `find`
+What I deliberately didn't build:
 
-The TypeORM adapters in `requests/persistence/` hold every query, including the aggregate
-list SQL and its snake_case row mapper. `RequestsService` and `ClassificationService` hold
-only business rules, and their unit tests use plain fake repositories instead of mocking
-TypeORM.
+- **No interface + injection token**: there is one implementation, and a concrete class
+  can be faked in tests just as easily. An interface is a cheap change if a second store
+  appears.
+- **No history repository**: classification history is one `save` and one `find`.
+  `ClassificationService` uses TypeORM's `Repository<ClassificationRecord>` directly, the
+  standard NestJS pattern this codebase already used. A wrapper would be pure indirection.
+- **No separate domain models**: services still use the entity classes as data types.
 
-I stopped short of separate domain models: services still work with the TypeORM entity
-classes as data types. Splitting them would mean mapping in both directions for every
-call, and that doesn't pay off yet with one store and simple entities.
+The same review-size reasoning applies elsewhere. DTOs live in one `requests.dto.ts`, and
+the schema change is a single migration (indexes plus the history table).
 
 ### Migration vs deploy ordering
 

@@ -1,17 +1,13 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CustomerRequest, RequestStatus } from './customer-request.entity';
 import { ClassificationResult } from './classification-provider';
-import { ListOptions, RequestListItem } from './requests.types';
-import { REQUESTS_REPOSITORY, RequestsRepository } from './persistence/requests.repository';
+import { ListOptions, RequestListItem, RequestsRepository } from './requests.repository';
 
-export type { ListOptions, RequestListItem } from './requests.types';
+export type { ListOptions, RequestListItem } from './requests.repository';
 
 @Injectable()
 export class RequestsService {
-  constructor(
-    @Inject(REQUESTS_REPOSITORY)
-    private readonly requests: RequestsRepository,
-  ) {}
+  constructor(private readonly requests: RequestsRepository) {}
 
   list(options: ListOptions = {}): Promise<RequestListItem[]> {
     return this.requests.listWithNoteSummary(options);

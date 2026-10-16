@@ -23,7 +23,6 @@ services:
       DATABASE_URL: postgres://cami:cami@db:5432/cami
       PORT: "3001"
       NODE_ENV: development
-      CORS_ORIGIN: http://localhost:3000
     ports:
       - "3001:3001"
     depends_on:

@@ -10,11 +10,13 @@ import {
 } from '@nestjs/common';
 import { RequestsService } from './requests.service';
 import { ClassificationService } from './classification.service';
-import { CreateRequestDto } from './dto/create-request.dto';
-import { UpdateStatusDto } from './dto/update-status.dto';
-import { ClassifyRequestDto } from './dto/classify-request.dto';
-import { ListRequestsQueryDto } from './dto/list-requests-query.dto';
-import { HistoryQueryDto } from './dto/history-query.dto';
+import {
+  ClassifyRequestDto,
+  CreateRequestDto,
+  HistoryQueryDto,
+  ListRequestsQueryDto,
+  UpdateStatusDto,
+} from './requests.dto';
 
 @Controller('requests')
 export class RequestsController {

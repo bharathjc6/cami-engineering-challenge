@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toRequestListItem } from '../src/requests/persistence/typeorm-requests.repository';
+import { toRequestListItem } from '../src/requests/requests.repository';
 
 describe('toRequestListItem', () => {
   const base = {

@@ -1,4 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import {
   CLASSIFICATION_PROVIDER,
   ClassificationCategory,
@@ -7,11 +9,7 @@ import {
 } from './classification-provider';
 import { ClassificationRecord } from './classification-record.entity';
 import { RequestsService } from './requests.service';
-import { DEFAULT_HISTORY_LIMIT } from './dto/history-query.dto';
-import {
-  CLASSIFICATION_HISTORY_REPOSITORY,
-  ClassificationHistoryRepository,
-} from './persistence/classification-history.repository';
+import { DEFAULT_HISTORY_LIMIT } from './requests.dto';
 
 export type ClassifyResponse = ClassificationResult & {
   requestId: string | null;
@@ -83,8 +81,8 @@ export class ClassificationService {
     @Inject(CLASSIFICATION_PROVIDER)
     private readonly provider: ClassificationProvider,
     private readonly requestsService: RequestsService,
-    @Inject(CLASSIFICATION_HISTORY_REPOSITORY)
-    private readonly history: ClassificationHistoryRepository,
+    @InjectRepository(ClassificationRecord)
+    private readonly history: Repository<ClassificationRecord>,
   ) {}
 
   /** `message` is expected to be trimmed and length-checked by the DTO. */
@@ -96,13 +94,15 @@ export class ClassificationService {
       await this.requestsService.applyClassification(requestId, result);
     }
 
-    await this.history.record({
-      requestId: requestId ?? null,
-      message,
-      category: result.category,
-      confidence: result.confidence,
-      provider: this.provider.name,
-    });
+    await this.history.save(
+      this.history.create({
+        requestId: requestId ?? null,
+        message,
+        category: result.category,
+        confidence: result.confidence,
+        provider: this.provider.name,
+      }),
+    );
 
     return {
       category: result.category,
@@ -113,10 +113,13 @@ export class ClassificationService {
 
   async listHistory(query: HistoryQuery = {}): Promise<HistoryItem[]> {
     const records = await this.history.find({
-      category: query.category,
-      requestId: query.requestId,
-      limit: query.limit ?? DEFAULT_HISTORY_LIMIT,
-      offset: query.offset ?? 0,
+      where: {
+        ...(query.category ? { category: query.category } : {}),
+        ...(query.requestId ? { requestId: query.requestId } : {}),
+      },
+      order: { createdAt: 'DESC', id: 'DESC' },
+      take: query.limit ?? DEFAULT_HISTORY_LIMIT,
+      skip: query.offset ?? 0,
     });
     return records.map(toHistoryItem);
   }
