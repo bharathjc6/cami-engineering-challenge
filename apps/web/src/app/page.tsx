@@ -6,6 +6,7 @@ import {
   classifyMessage,
   createRequest,
   fetchRequests,
+  RequestListItem,
   RequestStatus,
   updateRequestStatus,
 } from '@/lib/api';
@@ -32,11 +33,32 @@ export default function HomePage() {
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: RequestStatus }) =>
       updateRequestStatus(id, status),
+    // Reflect the new status immediately; the controlled <select> would
+    // otherwise snap back to the cached value until the next refetch.
+    onMutate: async ({ id, status }) => {
+      await queryClient.cancelQueries({ queryKey: ['requests'] });
+      const previous = queryClient.getQueryData<RequestListItem[]>(['requests']);
+      queryClient.setQueryData<RequestListItem[]>(['requests'], (rows) =>
+        rows?.map((row) => (row.id === id ? { ...row, status } : row)),
+      );
+      return { previous };
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['requests'], context.previous);
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['requests'] }),
   });
 
   const classifyMutation = useMutation({
     mutationFn: ({ id, message }: { id: string; message: string }) =>
       classifyMessage(message, id),
+    // Classification changes category, confidence and possibly status.
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
+      queryClient.invalidateQueries({ queryKey: ['history'] });
+    },
   });
 
   if (requestsQuery.isLoading) {
@@ -157,6 +179,11 @@ export default function HomePage() {
 
       {(statusMutation.isSuccess || classifyMutation.isSuccess) && (
         <p className="text-sm text-slate-600">Last action reported success from the API.</p>
+      )}
+      {(statusMutation.isError || classifyMutation.isError || createMutation.isError) && (
+        <p className="text-sm text-red-700">
+          {(statusMutation.error ?? classifyMutation.error ?? createMutation.error)?.message}
+        </p>
       )}
     </div>
   );
