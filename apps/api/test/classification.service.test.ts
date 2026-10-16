@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
+import { Repository } from 'typeorm';
 import {
   applyConfidenceRules,
   ClassificationService,
 } from '../src/requests/classification.service';
-import { KeywordClassifier } from '../src/requests/keyword-classifier';
+import { ClassificationProvider } from '../src/requests/classification-provider';
+import { ClassificationRecord } from '../src/requests/classification-record.entity';
 import { RequestsService } from '../src/requests/requests.service';
 
 describe('applyConfidenceRules', () => {
@@ -28,31 +30,64 @@ describe('applyConfidenceRules', () => {
 });
 
 describe('ClassificationService', () => {
+  const requestId = '6f1c2b2e-0000-4000-8000-000000000001';
+
   function setup() {
+    const provider: ClassificationProvider = {
+      name: 'fake-v1',
+      classify: vi.fn().mockResolvedValue({ category: 'sales', confidence: 0.9 }),
+    };
     const requestsService = {
       applyClassification: vi.fn().mockResolvedValue(undefined),
     } as unknown as RequestsService;
-    const service = new ClassificationService(new KeywordClassifier(), requestsService);
-    return { service, requestsService };
+    const saved: Partial<ClassificationRecord>[] = [];
+    const history = {
+      create: (data: Partial<ClassificationRecord>) => data,
+      save: vi.fn(async (data: Partial<ClassificationRecord>) => {
+        saved.push(data);
+        return data;
+      }),
+    } as unknown as Repository<ClassificationRecord>;
+
+    const service = new ClassificationService(provider, requestsService, history);
+    return { service, provider, requestsService, history, saved };
   }
 
-  it('classifies without touching a request when no requestId is given', async () => {
-    const { service, requestsService } = setup();
-    const response = await service.classify('Our billing invoice looks wrong');
+  it('classifies and records history without touching a request', async () => {
+    const { service, requestsService, saved } = setup();
+    const response = await service.classify('Can we book a demo soon');
 
-    expect(response).toEqual({ category: 'billing', confidence: 0.86, requestId: null });
+    expect(response).toEqual({ category: 'sales', confidence: 0.9, requestId: null });
     expect(requestsService.applyClassification).not.toHaveBeenCalled();
+    expect(saved).toEqual([
+      {
+        requestId: null,
+        message: 'Can we book a demo soon',
+        category: 'sales',
+        confidence: 0.9,
+        provider: 'fake-v1',
+      },
+    ]);
   });
 
-  it('applies the adjusted result to the request when a requestId is given', async () => {
-    const { service, requestsService } = setup();
-    const id = '6f1c2b2e-0000-4000-8000-000000000001';
-    const response = await service.classify('Our billing invoice looks wrong', id);
+  it('applies the adjusted result to the request and records it', async () => {
+    const { service, requestsService, saved } = setup();
+    const response = await service.classify('demo', requestId);
 
-    expect(response.requestId).toBe(id);
-    expect(requestsService.applyClassification).toHaveBeenCalledWith(id, {
-      category: 'billing',
-      confidence: 0.86,
+    // Single word: confidence softened by the rules, not the provider.
+    expect(response).toEqual({ category: 'sales', confidence: 0.75, requestId });
+    expect(requestsService.applyClassification).toHaveBeenCalledWith(requestId, {
+      category: 'sales',
+      confidence: 0.75,
     });
+    expect(saved[0]).toMatchObject({ requestId, category: 'sales', provider: 'fake-v1' });
+  });
+
+  it('records nothing when the request does not exist', async () => {
+    const { service, requestsService, history } = setup();
+    vi.mocked(requestsService.applyClassification).mockRejectedValue(new Error('not found'));
+
+    await expect(service.classify('Can we book a demo soon', requestId)).rejects.toThrow();
+    expect(history.save).not.toHaveBeenCalled();
   });
 });

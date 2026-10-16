@@ -14,6 +14,7 @@ import { CreateRequestDto } from './dto/create-request.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { ClassifyRequestDto } from './dto/classify-request.dto';
 import { ListRequestsQueryDto } from './dto/list-requests-query.dto';
+import { HistoryQueryDto } from './dto/history-query.dto';
 
 @Controller('requests')
 export class RequestsController {
@@ -28,11 +29,8 @@ export class RequestsController {
   }
 
   @Get('history')
-  history(@Query('category') _category?: string) {
-    return {
-      items: [],
-      message: 'Classification history is not implemented yet.',
-    };
+  async history(@Query() query: HistoryQueryDto) {
+    return { items: await this.classificationService.listHistory(query) };
   }
 
   @Get(':id')

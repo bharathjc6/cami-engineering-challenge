@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CustomerRequest, RequestStatus } from './customer-request.entity';
-import { ClassificationResult } from './keyword-classifier';
+import { ClassificationResult } from './classification-provider';
 
 export type RequestListItem = {
   id: string;
