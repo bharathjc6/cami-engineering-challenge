@@ -11,7 +11,9 @@ import { RequestNote } from './requests/request-note.entity';
       url: process.env.DATABASE_URL ?? 'postgres://cami:cami@localhost:5432/cami',
       entities: [CustomerRequest, RequestNote],
       synchronize: false,
-      logging: ['query'],
+      // Query logging prints every statement and its parameters (customer
+      // message text) and is costly on hot paths; opt in with DB_LOGGING=query.
+      logging: process.env.DB_LOGGING === 'query' ? ['query', 'error'] : ['error'],
     }),
     RequestsModule,
   ],
