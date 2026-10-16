@@ -23,4 +23,10 @@ export class HistoryQueryDto {
   @Min(1)
   @Max(MAX_PAGE_SIZE)
   limit?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
 }

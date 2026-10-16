@@ -1,6 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import {
   CLASSIFICATION_PROVIDER,
   ClassificationCategory,
@@ -10,15 +8,20 @@ import {
 import { ClassificationRecord } from './classification-record.entity';
 import { RequestsService } from './requests.service';
 import { DEFAULT_HISTORY_LIMIT } from './dto/history-query.dto';
+import {
+  CLASSIFICATION_HISTORY_REPOSITORY,
+  ClassificationHistoryRepository,
+} from './persistence/classification-history.repository';
 
 export type ClassifyResponse = ClassificationResult & {
   requestId: string | null;
 };
 
-export type HistoryFilter = {
+export type HistoryQuery = {
   category?: ClassificationCategory;
   requestId?: string;
   limit?: number;
+  offset?: number;
 };
 
 export type HistoryItem = {
@@ -80,8 +83,8 @@ export class ClassificationService {
     @Inject(CLASSIFICATION_PROVIDER)
     private readonly provider: ClassificationProvider,
     private readonly requestsService: RequestsService,
-    @InjectRepository(ClassificationRecord)
-    private readonly history: Repository<ClassificationRecord>,
+    @Inject(CLASSIFICATION_HISTORY_REPOSITORY)
+    private readonly history: ClassificationHistoryRepository,
   ) {}
 
   /** `message` is expected to be trimmed and length-checked by the DTO. */
@@ -93,15 +96,13 @@ export class ClassificationService {
       await this.requestsService.applyClassification(requestId, result);
     }
 
-    await this.history.save(
-      this.history.create({
-        requestId: requestId ?? null,
-        message,
-        category: result.category,
-        confidence: result.confidence,
-        provider: this.provider.name,
-      }),
-    );
+    await this.history.record({
+      requestId: requestId ?? null,
+      message,
+      category: result.category,
+      confidence: result.confidence,
+      provider: this.provider.name,
+    });
 
     return {
       category: result.category,
@@ -110,14 +111,12 @@ export class ClassificationService {
     };
   }
 
-  async listHistory(filter: HistoryFilter = {}): Promise<HistoryItem[]> {
+  async listHistory(query: HistoryQuery = {}): Promise<HistoryItem[]> {
     const records = await this.history.find({
-      where: {
-        ...(filter.category ? { category: filter.category } : {}),
-        ...(filter.requestId ? { requestId: filter.requestId } : {}),
-      },
-      order: { createdAt: 'DESC' },
-      take: filter.limit ?? DEFAULT_HISTORY_LIMIT,
+      category: query.category,
+      requestId: query.requestId,
+      limit: query.limit ?? DEFAULT_HISTORY_LIMIT,
+      offset: query.offset ?? 0,
     });
     return records.map(toHistoryItem);
   }

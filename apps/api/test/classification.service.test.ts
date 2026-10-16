@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Repository } from 'typeorm';
 import {
   applyConfidenceRules,
   ClassificationService,
 } from '../src/requests/classification.service';
 import { ClassificationProvider } from '../src/requests/classification-provider';
-import { ClassificationRecord } from '../src/requests/classification-record.entity';
+import {
+  ClassificationHistoryRepository,
+  NewClassificationRecord,
+} from '../src/requests/persistence/classification-history.repository';
 import { RequestsService } from '../src/requests/requests.service';
 
 describe('applyConfidenceRules', () => {
@@ -40,14 +42,14 @@ describe('ClassificationService', () => {
     const requestsService = {
       applyClassification: vi.fn().mockResolvedValue(undefined),
     } as unknown as RequestsService;
-    const saved: Partial<ClassificationRecord>[] = [];
+    const saved: NewClassificationRecord[] = [];
     const history = {
-      create: (data: Partial<ClassificationRecord>) => data,
-      save: vi.fn(async (data: Partial<ClassificationRecord>) => {
-        saved.push(data);
-        return data;
+      record: vi.fn(async (entry: NewClassificationRecord) => {
+        saved.push(entry);
+        return entry;
       }),
-    } as unknown as Repository<ClassificationRecord>;
+      find: vi.fn().mockResolvedValue([]),
+    } as unknown as ClassificationHistoryRepository;
 
     const service = new ClassificationService(provider, requestsService, history);
     return { service, provider, requestsService, history, saved };
@@ -88,6 +90,17 @@ describe('ClassificationService', () => {
     vi.mocked(requestsService.applyClassification).mockRejectedValue(new Error('not found'));
 
     await expect(service.classify('Can we book a demo soon', requestId)).rejects.toThrow();
-    expect(history.save).not.toHaveBeenCalled();
+    expect(history.record).not.toHaveBeenCalled();
+  });
+
+  it('passes filters and paging defaults to the repository', async () => {
+    const { service, history } = setup();
+    await service.listHistory({ category: 'billing' });
+    expect(history.find).toHaveBeenCalledWith({
+      category: 'billing',
+      requestId: undefined,
+      limit: 50,
+      offset: 0,
+    });
   });
 });
