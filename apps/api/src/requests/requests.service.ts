@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CustomerRequest, RequestStatus } from './customer-request.entity';
+import { ClassificationResult } from './keyword-classifier';
 
 export type RequestListItem = {
   id: string;
@@ -119,7 +120,17 @@ export class RequestsService {
     return this.requests.save(row);
   }
 
-  async save(request: CustomerRequest): Promise<CustomerRequest> {
-    return this.requests.save(request);
+  /** Records a classification on the request and moves it out of "open". */
+  async applyClassification(
+    id: string,
+    result: ClassificationResult,
+  ): Promise<CustomerRequest> {
+    const row = await this.getById(id);
+    row.category = result.category;
+    row.confidence = result.confidence;
+    if (row.status === 'open') {
+      row.status = 'in_progress';
+    }
+    return this.requests.save(row);
   }
 }

@@ -14,8 +14,11 @@ export type RequestListItem = {
   updatedAt: string;
 };
 
+/** The table renders the newest 25; fetch only those instead of every row. */
+const REQUESTS_PAGE_SIZE = 25;
+
 export async function fetchRequests(): Promise<RequestListItem[]> {
-  const res = await fetch(`${API_URL}/requests`);
+  const res = await fetch(`${API_URL}/requests?limit=${REQUESTS_PAGE_SIZE}`);
   if (!res.ok) {
     throw new Error(`Failed to load requests (${res.status})`);
   }
