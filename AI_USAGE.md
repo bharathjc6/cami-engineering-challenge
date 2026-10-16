@@ -33,9 +33,12 @@
 - **Accidental dependency drift.** An early `npm install` (to get the app running) rewrote
   `package-lock.json` and bumped versions (e.g. `next` 16.2 → 16.4). I reverted it to the
   committed lockfile so the PR contains only intentional dependency changes.
-- **Scope pushback**: I chose opt-in paging instead of changing the default list contract,
-  and left the repository-port stretch undone because it doesn't pay for itself yet
-  (reasoning in `DECISIONS.md`).
+- **Scope control**: I chose opt-in API paging instead of changing the default list
+  contract. While reviewing, I asked for the raw list SQL to move out of the service, and
+  the agent added a repository layer for that. I also started UI pagination, then had it
+  reverted mid-change once I checked it against the brief: it wasn't asked for, and the
+  original UI deliberately shows the newest 25. I removed the confidence score the agent
+  had added to the History page for the same reason.
 - No AI co-author trailers on commits; this file is the disclosure.
 
 ## Trade-offs

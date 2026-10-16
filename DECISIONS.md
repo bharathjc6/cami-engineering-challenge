@@ -74,7 +74,11 @@ Implemented:
   `(category, created_at DESC)`.
 - `GET /requests/history?category=&requestId=&limit=` returns `{ items }`, newest first,
   validated, default 50, max 200.
-- `/history` page: a category filter and a table matching the requests table's styling.
+- `/history` page: a category filter and a table matching the requests table's styling
+  (time, message, category, provider). Confidence is stored but not shown.
+- No UI pagination on either page. The requests table keeps its original behaviour of
+  showing the newest 25, and history shows the newest 50. The API accepts optional
+  `limit`/`offset` if paging is added later.
 
 Deliberate choices and gaps:
 
@@ -84,7 +88,7 @@ Deliberate choices and gaps:
 - **Not transactional**: the request update happens first, then the history insert. An
   unknown `requestId` therefore 404s without writing history. If the insert fails after the
   update, the request stays classified with no history row. Wrapping both in one transaction
-  needs a unit-of-work seam across services; I left it for the repository-port work.
+  needs a unit-of-work seam spanning both repositories; I left that out.
 - Classify still trusts the `message` from the client body even when a `requestId` is
   given, as before. A cleaner contract would classify the stored request's message server
   side; I didn't change it so the endpoint's semantics stay the same.
@@ -92,9 +96,22 @@ Deliberate choices and gaps:
 
 ## Stretch (if any)
 
-I skipped the persistence-boundary stretch on purpose. With one aggregate query and two
-simple repositories, a port layer would mostly add indirection now. It earns its place once
-there is a second store or a need for transactions across services (see above).
+### Persistence boundary
+
+Services no longer touch TypeORM. Data access sits behind two interfaces (ports), injected
+by token:
+
+- `RequestsRepository`: `listWithNoteSummary`, `findById`, `create`, `save`
+- `ClassificationHistoryRepository`: `record`, `find`
+
+The TypeORM adapters in `requests/persistence/` hold every query, including the aggregate
+list SQL and its snake_case row mapper. `RequestsService` and `ClassificationService` hold
+only business rules, and their unit tests use plain fake repositories instead of mocking
+TypeORM.
+
+I stopped short of separate domain models: services still work with the TypeORM entity
+classes as data types. Splitting them would mean mapping in both directions for every
+call, and that doesn't pay off yet with one store and simple entities.
 
 ### Migration vs deploy ordering
 

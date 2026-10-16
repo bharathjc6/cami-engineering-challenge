@@ -70,12 +70,7 @@ export default function HistoryPage() {
                       <div className="mt-1 text-xs text-slate-500">Not linked to a request</div>
                     )}
                   </td>
-                  <td className="px-4 py-3">
-                    {item.category}
-                    <span className="ml-1 text-xs text-slate-500">
-                      ({item.confidence.toFixed(2)})
-                    </span>
-                  </td>
+                  <td className="px-4 py-3">{item.category}</td>
                   <td className="px-4 py-3 text-slate-600">{item.provider}</td>
                 </tr>
               ))}
